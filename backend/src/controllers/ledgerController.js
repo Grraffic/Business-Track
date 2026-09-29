@@ -1,4 +1,4 @@
-const { syncLedger } = require("../services/ledgerSync");
+const { syncLedger, clearLedger } = require("../services/ledgerSync");
 
 async function syncLocalLedger(request, response) {
   try {
@@ -13,4 +13,13 @@ async function syncLocalLedger(request, response) {
   }
 }
 
-module.exports = { syncLocalLedger };
+async function clearLocalLedger(request, response) {
+  try {
+    await clearLedger(request.supabase, request.user);
+    return response.json({ ok: true });
+  } catch (error) {
+    return response.status(400).json({ error: error.message });
+  }
+}
+
+module.exports = { syncLocalLedger, clearLocalLedger };

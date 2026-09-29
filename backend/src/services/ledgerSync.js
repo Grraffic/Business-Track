@@ -158,4 +158,40 @@ async function syncLedger(supabase, user, payload) {
   };
 }
 
-module.exports = { syncLedger };
+async function clearLedger(supabase, user) {
+  // 1. Collect the ingredient IDs linked to this user's purchases before deletion
+  const { data: userPurchases } = await supabase
+    .from("ingredient_purchases")
+    .select("ingredient_id")
+    .eq("created_by", user.id);
+
+  const ingredientIds = [
+    ...new Set((userPurchases ?? []).map((p) => p.ingredient_id).filter(Boolean)),
+  ];
+
+  // 2. Delete this user's purchases
+  const { error: purchasesError } = await supabase
+    .from("ingredient_purchases")
+    .delete()
+    .eq("created_by", user.id);
+  if (purchasesError) throw purchasesError;
+
+  // 3. Delete the ingredients that belonged to this user (identified via purchases)
+  if (ingredientIds.length) {
+    const { error: ingredientsError } = await supabase
+      .from("ingredients")
+      .delete()
+      .in("id", ingredientIds);
+    if (ingredientsError) throw ingredientsError;
+  }
+
+  // 4. Delete this user's ledger entries
+  const { error: entriesError } = await supabase
+    .from("entries")
+    .delete()
+    .eq("created_by", user.id);
+  if (entriesError) throw entriesError;
+}
+
+module.exports = { syncLedger, clearLedger };
+
