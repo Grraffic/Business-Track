@@ -25,6 +25,7 @@ export default function AppRoot() {
     sidebarOpen,
     setSidebarOpen,
     toast,
+    setToast,
     authUser,
     authLoading,
     syncStatus,
@@ -70,6 +71,9 @@ export default function AppRoot() {
           <nav className="ledger-topnav" aria-label="Main navigation">
             <a href="#businesses">Businesses</a>
             <a href="#how-it-works">About</a>
+            <Link className="ledger-button secondary" to="/app">
+              Explore Demo
+            </Link>
             <button
               className="ledger-button primary top-action"
               onClick={handleGoogleSignIn}
@@ -97,6 +101,7 @@ export default function AppRoot() {
         syncStatus={syncStatus}
         isSyncing={isSyncing}
         onSyncNow={handleSyncNow}
+        onToast={setToast}
       />
 
       {toast && (

@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Snowflake } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Snowflake, Trash2, X } from "lucide-react";
 import { currency } from "../logic/ledger.js";
 import { useIceWaterInventory } from "../hooks/useIceWaterInventory.js";
 
@@ -10,6 +10,7 @@ export default function IceWaterInventory({ period = "month" }) {
     saleQuantity,
     setSaleQuantity,
     notice,
+    setNotice,
     periodSales,
     income,
     expenses,
@@ -18,6 +19,7 @@ export default function IceWaterInventory({ period = "month" }) {
     costPerCup,
     addProduction,
     recordSale,
+    deleteSale,
     updateSellPrice,
   } = useIceWaterInventory(period);
 
@@ -169,9 +171,18 @@ export default function IceWaterInventory({ period = "month" }) {
       </div>
 
       {notice && (
-        <p className="ledger-inventory-notice" role="status">
-          {notice}
-        </p>
+        <div className="ledger-inventory-notice-banner" role="status">
+          <span>{notice}</span>
+          <button
+            type="button"
+            className="ledger-notice-close"
+            onClick={() => setNotice("")}
+            title="Dismiss notification"
+            aria-label="Dismiss notification"
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
 
       <section className="ledger-panel ledger-product-sales">
@@ -193,12 +204,32 @@ export default function IceWaterInventory({ period = "month" }) {
           <div className="ledger-product-sale-list">
             {periodSales.slice(0, 8).map((sale) => (
               <div className="ledger-product-sale" key={sale.id}>
-                <span>{new Date(sale.soldAt).toLocaleString()}</span>
+                <span className="sale-date">
+                  {new Date(sale.soldAt).toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  {" · "}
+                  {new Date(sale.soldAt).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </span>
                 <strong>
                   {sale.quantity} {sale.quantity === 1 ? "cup" : "cups"}
                 </strong>
                 <span>Income {currency.format(sale.revenue)}</span>
                 <strong>{currency.format(sale.profit)} profit</strong>
+                <button
+                  type="button"
+                  className="ledger-row-delete-btn"
+                  onClick={() => deleteSale(sale.id)}
+                  title="Remove this sale"
+                  aria-label="Remove this sale"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>

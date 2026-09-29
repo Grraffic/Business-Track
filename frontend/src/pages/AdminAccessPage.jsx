@@ -1,4 +1,4 @@
-import { Check, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { Check, RefreshCw, X } from "lucide-react";
 import { useAdminAccess } from "../hooks/useAdminAccess.js";
 
 const statusTabs = [
@@ -79,9 +79,6 @@ export default function AdminAccessPage({ user }) {
               );
             })}
           </div>
-          <span className="ledger-admin-identity">
-            <ShieldCheck size={14} /> {user.email}
-          </span>
         </div>
 
         {error && (

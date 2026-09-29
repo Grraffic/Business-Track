@@ -60,6 +60,7 @@ export default function AppRoutes({
   syncStatus,
   isSyncing,
   onSyncNow,
+  onToast,
 }) {
   const workspaceProps = (page) => ({
     page,
@@ -72,6 +73,7 @@ export default function AppRoutes({
     setSidebarOpen,
     onNavigate,
     onSignOut,
+    onToast,
   });
 
   const workspace = (page, content) => (
@@ -129,7 +131,7 @@ export default function AppRoutes({
           path="/app"
           element={workspace(
             "overview",
-            <OverviewPage ledger={ledger} onNavigate={onNavigate} />,
+            <OverviewPage ledger={ledger} onNavigate={onNavigate} onToast={onToast} />,
           )}
         />
         <Route

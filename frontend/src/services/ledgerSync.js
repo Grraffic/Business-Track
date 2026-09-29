@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getDemoSummary } from "../logic/ledger.js";
+import { getDemoSummary, grahamFlavors } from "../logic/ledger.js";
 import { supabase } from "./supabase.js";
 
 let syncQueue = Promise.resolve();
@@ -100,3 +100,49 @@ export function syncLocalLedgerToSupabase() {
   syncQueue = sync.catch(() => undefined);
   return sync;
 }
+
+export function clearLocalOnly() {
+  localStorage.removeItem("family-ledger-water-stock");
+  localStorage.removeItem("family-ledger-ice-water-stock");
+  for (const flavor of grahamFlavors) {
+    localStorage.removeItem(`family-ledger-graham-${flavor.id}-stock`);
+  }
+  localStorage.removeItem("family-ledger-ingredients");
+  localStorage.removeItem("family-ledger-demo-ingredients");
+  localStorage.removeItem("family-ledger-demo-purchases");
+}
+
+export async function pullFromSupabase() {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.user) return null;
+
+  try {
+    const [{ count: entryCount }, { count: purchaseCount }] = await Promise.all([
+      supabase.from("entries").select("*", { count: "exact", head: true }),
+      supabase.from("ingredient_purchases").select("*", { count: "exact", head: true }),
+    ]);
+
+    return {
+      entryCount: entryCount ?? 0,
+      purchaseCount: purchaseCount ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function clearSupabaseData() {
+  if (!supabase) return;
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) return;
+
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+  await axios.delete(`${apiBaseUrl}/api/ledger/clear`, {
+    headers: { Authorization: `Bearer ${data.session.access_token}` },
+  });
+}
+

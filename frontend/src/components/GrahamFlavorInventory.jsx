@@ -41,7 +41,7 @@ export default function GrahamFlavorInventory({
           </div>
         </div>
         <label className="ledger-field ledger-product-price">
-          Selling price / bar
+          Selling price
           <span className="ledger-money-input">
             <span>₱</span>
             <input
@@ -78,12 +78,7 @@ export default function GrahamFlavorInventory({
         </article>
       </div>
 
-      <p className="ledger-graham-projection">
-        If all {inventory.quantity} {inventory.quantity === 1 ? "bar" : "bars"}{" "}
-        sell: {currency.format(potentialIncome)} potential income −{" "}
-        {currency.format(inventory.ingredientExpenses)} ingredient expenses ={" "}
-        {currency.format(projectedProfit)} projected profit.
-      </p>
+     
 
       <div className="ledger-product-forms">
         <form

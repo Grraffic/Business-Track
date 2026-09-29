@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { currency, isInPeriod } from "../logic/ledger.js";
 import { syncLocalLedgerToSupabase } from "../services/ledgerSync.js";
 
@@ -44,7 +44,19 @@ export function useIceWaterInventory(period = "month") {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     localStorage.setItem(storageKey, JSON.stringify(inventory));
+    window.dispatchEvent(new CustomEvent("ledger-updated"));
     syncLocalLedgerToSupabase().catch((error) =>
       setNotice(`Saved locally, but Supabase sync failed: ${error.message}`),
     );
@@ -140,9 +152,17 @@ export function useIceWaterInventory(period = "month") {
       quantity: current.quantity - soldQuantity,
       sales: [sale, ...current.sales],
     }));
-    setNotice(
-      `Sale recorded: ${soldQuantity} ${soldQuantity === 1 ? "cup" : "cups"}, income ${currency.format(revenue)}.`,
-    );
+  };
+
+  const deleteSale = (saleId) => {
+    const saleToDelete = inventory.sales.find((s) => s.id === saleId);
+    if (!saleToDelete) return;
+    const restoredQty = Number(saleToDelete.quantity) || 0;
+    setInventory((current) => ({
+      ...current,
+      quantity: current.quantity + restoredQty,
+      sales: current.sales.filter((s) => s.id !== saleId),
+    }));
   };
 
   const updateSellPrice = (value) => {
@@ -165,6 +185,7 @@ export function useIceWaterInventory(period = "month") {
     saleQuantity,
     setSaleQuantity,
     notice,
+    setNotice,
     periodSales,
     income,
     expenses,
@@ -173,6 +194,7 @@ export function useIceWaterInventory(period = "month") {
     costPerCup,
     addProduction,
     recordSale,
+    deleteSale,
     updateSellPrice,
   };
 }

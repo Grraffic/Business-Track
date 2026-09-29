@@ -23,6 +23,7 @@ export default function IngredientInventory({ period = "month" }) {
     setManualItems,
     manualFlavor,
     setManualFlavor,
+    availableFlavors = [],
     receiptFile,
     receiptPreview,
     receiptLines,
@@ -87,7 +88,7 @@ export default function IngredientInventory({ period = "month" }) {
             <p>Stock quantity and average cost per unit</p>
           </div>
           <div className="ledger-ingredient-total">
-            <span>Ingredient purchases in selected period</span>
+            <span>Total price</span>
             <strong>{currency.format(totalIngredientPurchases)}</strong>
           </div>
         </div>
@@ -308,19 +309,16 @@ export default function IngredientInventory({ period = "month" }) {
       {dialog === "confirm" && pendingConfirmation && (
         <div className="ledger-modal-backdrop">
           <section
-            className="ledger-modal"
+            className="ledger-modal ledger-confirm-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-ingredients-title"
           >
             <div className="ledger-modal-heading">
               <div>
-                <span className="ledger-small-label">FINAL REVIEW</span>
-                <h2 id="confirm-ingredients-title">Confirm ingredients</h2>
-                <p>
-                  Check these entries before adding them to Graham stock. Go
-                  back to edit any item.
-                </p>
+                <span className="ledger-small-label" id="confirm-ingredients-title">
+                  FINAL REVIEW
+                </span>
               </div>
               <button
                 className="ledger-icon-link"
@@ -330,74 +328,99 @@ export default function IngredientInventory({ period = "month" }) {
                 <X size={18} />
               </button>
             </div>
-            {pendingConfirmation.flavorId && (
-              <p className="ledger-confirmation-flavor">
+
+            <div className="ledger-confirmation-banner">
+              <span className="ledger-confirmation-badge">
                 Flavor:{" "}
-                {grahamFlavors.find(
-                  (flavor) => flavor.id === pendingConfirmation.flavorId,
-                )?.name ?? "Graham Bar"}
-              </p>
-            )}
-            <div className="ledger-confirmation-list">
-              {pendingConfirmation.lines.map((line, index) => (
-                <div className="ledger-confirmation-row" key={index}>
-                  <label className="ledger-confirmation-field">
-                    <span>Ingredient</span>
-                    <input
-                      required
-                      aria-label={`Ingredient ${index + 1} name`}
-                      value={line.name}
-                      onChange={(event) =>
-                        updatePendingLine(index, "name", event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="ledger-confirmation-field">
-                    <span>Quantity</span>
-                    <input
-                      required
-                      aria-label={`Ingredient ${index + 1} quantity`}
-                      type="number"
-                      min="0.0001"
-                      step="any"
-                      value={line.quantity}
-                      onChange={(event) =>
-                        updatePendingLine(index, "quantity", event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="ledger-confirmation-field">
-                    <span>Unit</span>
-                    <input
-                      required
-                      aria-label={`Ingredient ${index + 1} unit`}
-                      value={line.unit}
-                      onChange={(event) =>
-                        updatePendingLine(index, "unit", event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="ledger-confirmation-field">
-                    <span>Total paid</span>
-                    <input
-                      required
-                      aria-label={`Ingredient ${index + 1} total paid`}
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={line.totalPaid}
-                      onChange={(event) =>
-                        updatePendingLine(
-                          index,
-                          "totalPaid",
-                          event.target.value,
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              ))}
+                <strong>
+                  {availableFlavors.find(
+                    (flavor) => flavor.id === pendingConfirmation.flavorId,
+                  )?.name ??
+                    grahamFlavors.find(
+                      (flavor) => flavor.id === pendingConfirmation.flavorId,
+                    )?.name ??
+                    "Graham Bar"}
+                </strong>
+              </span>
+              <span className="ledger-confirmation-badge total">
+                Total price:{" "}
+                <strong>
+                  {currency.format(
+                    pendingConfirmation.lines.reduce(
+                      (sum, line) => sum + (Number(line.totalPaid) || 0),
+                      0,
+                    ),
+                  )}
+                </strong>
+              </span>
             </div>
+
+            <div className="ledger-confirmation-list">
+              {pendingConfirmation.lines.map((line, index) => {
+                const isManual = pendingConfirmation.source === "manual";
+                return (
+                  <div className="ledger-confirmation-row" key={index}>
+                    <label className="ledger-confirmation-field">
+                      <span>Name</span>
+                      <input
+                        required
+                        aria-label={`Ingredient ${index + 1} name`}
+                        value={line.name}
+                        onChange={(event) =>
+                          updatePendingLine(index, "name", event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="ledger-confirmation-field ledger-confirmation-field--qty">
+                      <span>Quantity</span>
+                      <input
+                        required
+                        aria-label={`Ingredient ${index + 1} quantity`}
+                        type="number"
+                        min="0.0001"
+                        step="any"
+                        value={line.quantity}
+                        onChange={(event) =>
+                          updatePendingLine(index, "quantity", event.target.value)
+                        }
+                      />
+                    </label>
+                    {!isManual && (
+                      <label className="ledger-confirmation-field ledger-confirmation-field--unit">
+                        <span>Unit</span>
+                        <input
+                          required
+                          aria-label={`Ingredient ${index + 1} unit`}
+                          value={line.unit}
+                          onChange={(event) =>
+                            updatePendingLine(index, "unit", event.target.value)
+                          }
+                        />
+                      </label>
+                    )}
+                    <label className="ledger-confirmation-field ledger-confirmation-field--price">
+                      <span>Total price</span>
+                      <input
+                        required
+                        aria-label={`Ingredient ${index + 1} total price`}
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={line.totalPaid}
+                        onChange={(event) =>
+                          updatePendingLine(
+                            index,
+                            "totalPaid",
+                            event.target.value,
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+
             <div className="ledger-modal-actions">
               <button
                 type="button"
@@ -442,12 +465,9 @@ export default function IngredientInventory({ period = "month" }) {
           >
             <div className="ledger-modal-heading">
               <div>
-                <span className="ledger-small-label">STOCK PURCHASE</span>
-                <h2 id="manual-ingredient-title">Add ingredient</h2>
-                <p>
-                  Choose a flavor, then enter ingredient name, quantity, and
-                  total price for each item.
-                </p>
+                <span className="ledger-small-label" id="manual-ingredient-title">
+                  STOCK PURCHASE
+                </span>
               </div>
               <button
                 className="ledger-icon-link"
@@ -474,7 +494,7 @@ export default function IngredientInventory({ period = "month" }) {
                   value={manualFlavor}
                   onChange={(event) => setManualFlavor(event.target.value)}
                 >
-                  {grahamFlavors.map((flavor) => (
+                  {(availableFlavors.length > 0 ? availableFlavors : grahamFlavors).map((flavor) => (
                     <option value={flavor.id} key={flavor.id}>
                       {flavor.name}
                     </option>
@@ -482,21 +502,10 @@ export default function IngredientInventory({ period = "month" }) {
                 </select>
               </label>
               <div className="ledger-manual-ingredient-list">
-                <div
-                  className="ledger-manual-ingredient-header"
-                  aria-hidden="true"
-                >
-                  <span>Ingredient name</span>
-                  <span>Quantity</span>
-                  <span>Total price</span>
-                  <span />
-                </div>
                 {manualItems.map((item, index) => (
                   <div className="ledger-manual-ingredient-row" key={item.id}>
-                    <label className="ledger-field">
-                      <span className="ledger-screen-reader">
-                        Ingredient {index + 1} name
-                      </span>
+                    <label className="ledger-field ledger-manual-field">
+                      <span>Name</span>
                       <input
                         autoFocus={index === 0}
                         required
@@ -513,10 +522,8 @@ export default function IngredientInventory({ period = "month" }) {
                         placeholder="e.g. Graham crackers"
                       />
                     </label>
-                    <label className="ledger-field">
-                      <span className="ledger-screen-reader">
-                        Ingredient {index + 1} quantity
-                      </span>
+                    <label className="ledger-field ledger-manual-field ledger-manual-field--sm">
+                      <span>Quantity</span>
                       <input
                         required
                         min="0.0001"
@@ -532,12 +539,11 @@ export default function IngredientInventory({ period = "month" }) {
                             ),
                           )
                         }
+                        placeholder="0"
                       />
                     </label>
-                    <label className="ledger-field">
-                      <span className="ledger-screen-reader">
-                        Ingredient {index + 1} total price
-                      </span>
+                    <label className="ledger-field ledger-manual-field ledger-manual-field--sm">
+                      <span>Total price</span>
                       <input
                         required
                         min="0.01"

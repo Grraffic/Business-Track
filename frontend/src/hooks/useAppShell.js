@@ -4,7 +4,10 @@ import { getPageFromPath } from "../routes/pageFromPath.js";
 import { useDemoLedger } from "./useDemoLedger.js";
 import { useAccessControl } from "./useAccessControl.js";
 import { supabase, supabaseConfigured } from "../services/supabase.js";
-import { syncLocalLedgerToSupabase } from "../services/ledgerSync.js";
+import {
+  pullFromSupabase,
+  syncLocalLedgerToSupabase,
+} from "../services/ledgerSync.js";
 
 export function useAppShell() {
   const location = useLocation();
@@ -51,16 +54,16 @@ export function useAppShell() {
     if (!authUser || !hasWorkspaceAccess) return undefined;
 
     let active = true;
-    syncLocalLedgerToSupabase()
+    pullFromSupabase()
       .then((result) => {
         if (active && result) {
           setSyncStatus(
-            `Synced ${result.entryCount} activity entries, ${result.ingredientCount} ingredients, and ${result.purchaseCount} purchases to Supabase.`,
+            `Connected to Supabase (${result.entryCount} entries in cloud).`,
           );
         }
       })
       .catch((error) => {
-        if (active) setSyncStatus(`Supabase sync failed: ${error.message}`);
+        if (active) setSyncStatus(`Supabase sync check: ${error.message}`);
       })
       .finally(() => {
         if (active) setIsSyncing(false);
@@ -145,6 +148,7 @@ export function useAppShell() {
     sidebarOpen,
     setSidebarOpen,
     toast,
+    setToast,
     authUser,
     authLoading,
     syncStatus,

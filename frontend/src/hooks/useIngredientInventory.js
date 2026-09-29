@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { grahamFlavors, isInPeriod } from "../logic/ledger.js";
+import { getGrahamFlavors, grahamFlavors, isInPeriod } from "../logic/ledger.js";
 import { parseReceiptLines } from "../logic/receipt.js";
 import { syncLocalLedgerToSupabase } from "../services/ledgerSync.js";
 
@@ -39,7 +39,25 @@ export function useIngredientInventory(period = "month") {
   const [pendingIngredientDelete, setPendingIngredientDelete] = useState(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
   const [manualItems, setManualItems] = useState([newManualIngredientLine()]);
-  const [manualFlavor, setManualFlavor] = useState(grahamFlavors[0].id);
+  const [availableFlavors, setAvailableFlavors] = useState(getGrahamFlavors);
+  const [manualFlavor, setManualFlavor] = useState(() => getGrahamFlavors()[0]?.id || "mango");
+
+  useEffect(() => {
+    const handleFlavorsChanged = () => {
+      const updated = getGrahamFlavors();
+      setAvailableFlavors(updated);
+      setManualFlavor((prev) =>
+        updated.some((f) => f.id === prev) ? prev : updated[0]?.id || "mango",
+      );
+    };
+    window.addEventListener("graham-flavors-changed", handleFlavorsChanged);
+    window.addEventListener("storage", handleFlavorsChanged);
+    return () => {
+      window.removeEventListener("graham-flavors-changed", handleFlavorsChanged);
+      window.removeEventListener("storage", handleFlavorsChanged);
+    };
+  }, []);
+
   const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState("");
   const [receiptLines, setReceiptLines] = useState([]);
@@ -51,8 +69,14 @@ export function useIngredientInventory(period = "month") {
   const [recordReceiptExpense, setRecordReceiptExpense] = useState(true);
   const [notice, setNotice] = useState("");
   const fileInput = useRef(null);
+  const didMountIngredientsRef = useRef(false);
+  const didMountPurchasesRef = useRef(false);
 
   useEffect(() => {
+    if (!didMountIngredientsRef.current) {
+      didMountIngredientsRef.current = true;
+      return;
+    }
     localStorage.setItem(
       "family-ledger-demo-ingredients",
       JSON.stringify(ingredients),
@@ -63,6 +87,10 @@ export function useIngredientInventory(period = "month") {
   }, [ingredients]);
 
   useEffect(() => {
+    if (!didMountPurchasesRef.current) {
+      didMountPurchasesRef.current = true;
+      return;
+    }
     localStorage.setItem(
       "family-ledger-demo-purchases",
       JSON.stringify(purchases),
@@ -420,6 +448,7 @@ export function useIngredientInventory(period = "month") {
     setManualItems,
     manualFlavor,
     setManualFlavor,
+    availableFlavors,
     receiptFile,
     receiptPreview,
     receiptLines,

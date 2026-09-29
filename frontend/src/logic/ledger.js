@@ -15,7 +15,39 @@ export const grahamFlavors = [
   { id: "cheesecake", name: "Cheesecake" },
   { id: "cookies-and-cream", name: "Cookies and Cream" },
   { id: "rocky-road", name: "Rocky Road" },
+  { id: "coffee-crumble", name: "Coffee Crumble" },
 ];
+
+export const CUSTOM_GRAHAM_FLAVORS_KEY = "family-ledger-graham-custom-flavors";
+
+export function getGrahamFlavors() {
+  try {
+    const custom = JSON.parse(
+      localStorage.getItem(CUSTOM_GRAHAM_FLAVORS_KEY) ?? "[]",
+    );
+    const combined = [...grahamFlavors];
+    if (Array.isArray(custom)) {
+      for (const item of custom) {
+        if (
+          item &&
+          item.id &&
+          item.name &&
+          !combined.some(
+            (f) =>
+              f.id === item.id ||
+              f.name.toLowerCase() === item.name.toLowerCase(),
+          )
+        ) {
+          combined.push(item);
+        }
+      }
+    }
+    return combined;
+  } catch {
+    return grahamFlavors;
+  }
+}
+
 
 export const pageTitles = {
   overview: "Business overview",
@@ -152,15 +184,42 @@ function getSavedBusinessSummary(businessId, period) {
     const sales = Array.isArray(inventory?.sales)
       ? inventory.sales.filter((sale) => isInPeriod(sale.soldAt, period))
       : [];
+    const restocks = Array.isArray(inventory?.restocks)
+      ? inventory.restocks.filter((item) =>
+          isInPeriod(
+            item.restockedAt ?? item.purchasedAt ?? item.occurredAt,
+            period,
+          ),
+        )
+      : Array.isArray(inventory?.purchases)
+        ? inventory.purchases.filter((item) =>
+            isInPeriod(
+              item.purchasedAt ?? item.restockedAt ?? item.occurredAt,
+              period,
+            ),
+          )
+        : [];
     const income = sales.reduce(
       (total, sale) => total + (Number(sale.revenue) || 0),
       0,
     );
-    const expenses = sales.reduce((total, sale) => {
-      const saleIncome = Number(sale.revenue) || 0;
-      const saleProfit = Number(sale.profit) || 0;
-      return total + Math.max(0, saleIncome - saleProfit);
-    }, 0);
+    const hasAnyRestocks =
+      (Array.isArray(inventory?.restocks) && inventory.restocks.length > 0) ||
+      (Array.isArray(inventory?.purchases) && inventory.purchases.length > 0);
+
+    const expenses = hasAnyRestocks
+      ? restocks.reduce(
+          (total, item) =>
+            total +
+            (Number(item.totalExpense ?? item.amount ?? item.totalPaid) || 0),
+          0,
+        )
+      : sales.reduce((total, sale) => {
+          const saleIncome = Number(sale.revenue) || 0;
+          const saleProfit = Number(sale.profit) || 0;
+          return total + Math.max(0, saleIncome - saleProfit);
+        }, 0);
+
     return {
       income,
       expenses,
@@ -260,6 +319,13 @@ function getSavedTransactions(page, period) {
     if (business.id === "water") {
       const inventory = readStoredRecord("family-ledger-water-stock");
       const sales = Array.isArray(inventory?.sales) ? inventory.sales : [];
+      const restocks = Array.isArray(inventory?.restocks)
+        ? inventory.restocks
+        : Array.isArray(inventory?.purchases)
+          ? inventory.purchases
+          : [];
+      const hasAnyRestocks = restocks.length > 0;
+
       for (const sale of sales) {
         if (!isInPeriod(sale.soldAt, period)) continue;
         const revenue = Number(sale.revenue) || 0;
@@ -279,16 +345,43 @@ function getSavedTransactions(page, period) {
           time,
           occurredAt: sale.soldAt,
         });
-        const cost = Math.max(0, revenue - profit);
-        if (cost > 0) {
+
+        if (!hasAnyRestocks) {
+          const cost = Math.max(0, revenue - profit);
+          if (cost > 0) {
+            transactions.push({
+              id: `${business.id}-${sale.id}-cost`,
+              description: `${business.name} cost · ${sale.quantity} units`,
+              business: business.name,
+              amount: cost,
+              type: "expense",
+              time,
+              occurredAt: sale.soldAt,
+            });
+          }
+        }
+      }
+
+      if (hasAnyRestocks) {
+        for (const restock of restocks) {
+          const occurredAt =
+            restock.restockedAt ?? restock.purchasedAt ?? restock.occurredAt;
+          if (!occurredAt || !isInPeriod(occurredAt, period)) continue;
+          const amount =
+            Number(
+              restock.totalExpense ?? restock.amount ?? restock.totalPaid,
+            ) || 0;
           transactions.push({
-            id: `${business.id}-${sale.id}-cost`,
-            description: `${business.name} cost · ${sale.quantity} units`,
-            business: business.name,
-            amount: cost,
+            id: `water-restock-${restock.id}`,
+            description: `Water restock · ${restock.quantity} ${restock.quantity === 1 ? "gallon" : "gallons"}`,
+            business: "Water",
+            amount,
             type: "expense",
-            time,
-            occurredAt: sale.soldAt,
+            time: new Date(occurredAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+            occurredAt,
           });
         }
       }
